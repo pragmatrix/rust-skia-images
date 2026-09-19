@@ -1,10 +1,11 @@
 # This container was based on ubuntu 18 because we need to link with libstdc++ 6.0.25 because of ABI incompatibilities.
 # <https://github.com/rust-skia/rust-skia/issues/393>
 # libstdc++ versions used by this image:
-# - Current toolchain baseline: libstdc++-10-dev (amd64 and arm64).
-# - clang-16 and clang-20 on focal both depend on libstdc++-9-dev and libstdc++6 (>= 5.2).
-# - Switching this Dockerfile from clang-16 to clang-20 does not change the libstdc++ baseline.
-FROM --platform=linux/amd64 ubuntu:20.04
+# - libstdc++-10-dev is pinned to keep the C++ runtime baseline (gcc 10).
+# - clang-20 on jammy works with libstdc++-10-dev.
+# - Keeping gcc-10's libstdc++ preserves binary compatibility for users on older distros.
+# - The glibc baseline is jammy's 2.35 (moved from focal's 2.31).
+FROM --platform=linux/amd64 ubuntu:22.04
 LABEL org.opencontainers.image.source=https://github.com/pragmatrix/rust-skia-images
 
 # For github actions we need a newer git version
@@ -14,16 +15,17 @@ RUN apt-get update \
 
 RUN apt-get install -y wget
 
-## Add llvm package repository for ubuntu 20 (focal))
+## Add llvm package repository for ubuntu 22 (jammy))
 RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
-RUN add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-20 main"
+RUN add-apt-repository "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-20 main"
 
 # unzip: for installing the Android NDK
 # libgl1 libgl1-mesa-dev mesa-common-dev: for builds that need OpenGL
 # libgles2-mesa-dev for egl support.
-# clang-20 / g++-10 is used on focal.
+# clang-20 with g++-10 for the libstdc++ baseline.
 # make is needed for supplemental builds.
 # ninja-build for building Skia
+# python3 is 3.10 on jammy, which is what emsdk tooling needs.
 RUN apt-get update && apt-get install -y \
 	curl \
 	clang-20 \
@@ -38,7 +40,8 @@ RUN apt-get update && apt-get install -y \
 	mesa-common-dev \
 	llvm-20-dev \
 	pkg-config \
-	python \
+	python3 \
+	python3-distutils \
 	unzip \
 	make \
 	libwayland-dev \
@@ -79,10 +82,10 @@ RUN dpkg --add-architecture arm64
 # Configure apt to use ports.ubuntu.com for arm64 packages
 RUN sed -i 's|^deb http://archive.ubuntu.com/ubuntu|deb [arch=amd64] http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list \
 	&& sed -i 's|^deb http://security.ubuntu.com/ubuntu|deb [arch=amd64] http://security.ubuntu.com/ubuntu|g' /etc/apt/sources.list \
-	&& echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal main restricted universe multiverse" >> /etc/apt/sources.list \
-	&& echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-updates main restricted universe multiverse" >> /etc/apt/sources.list \
-	&& echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-backports main restricted universe multiverse" >> /etc/apt/sources.list \
-	&& echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-security main restricted universe multiverse" >> /etc/apt/sources.list
+	&& echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse" >> /etc/apt/sources.list \
+	&& echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse" >> /etc/apt/sources.list \
+	&& echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-backports main restricted universe multiverse" >> /etc/apt/sources.list \
+	&& echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse" >> /etc/apt/sources.list
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	gcc-10-aarch64-linux-gnu \
 	g++-10-aarch64-linux-gnu \
