@@ -53,7 +53,9 @@ jobs:
   #   - name: Publish the Docker image
   #     run: docker push ghcr.io/${{ github.repository_owner }}/rust-skia-linux-arm64:latest
 
-  # Disabled for now (windows-2019 runner is deprecated; will be phased out).
+  # Disabled. Windows jobs on GitHub Actions do not run in containers at all ("Containers
+  # are not supported on Windows", see rust-skia's windows-job.yaml template), so no workflow
+  # consumes ghcr.io/.../rust-skia-windows; the windows-2019 runner image is also deprecated.
   # windows:
   #   runs-on: windows-2019
   #   steps:
