@@ -15,8 +15,13 @@ RUN apt-get update \
 
 RUN apt-get install -y wget
 
+# GitHub action runners cannot connect to IPv6 targets from inside the default docker bridge;
+# apt.llvm.org advertises AAAA records, so force IPv4 for apt (wget below gets -4).
+RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
+
 ## Add llvm package repository for ubuntu 22 (jammy))
-RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+# -4: wget has no happy-eyeballs fallback, and GitHub action runners cannot connect over IPv6.
+RUN wget -4 -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
 RUN add-apt-repository "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-20 main"
 
 # unzip: for installing the Android NDK
