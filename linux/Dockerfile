@@ -15,7 +15,10 @@ RUN apt-get update \
 
 RUN apt-get install -y wget
 
-# GitHub action runners cannot connect to IPv6 targets from inside the default docker bridge;
+# GitHub action runners cannot connect to IPv6 targets from inside the default docker bridge
+# (observed: wget failing on apt.llvm.org's Fastly AAAA record with "Network is unreachable").
+# GitHub considers this a permanent infrastructure limitation, wontfix:
+# <https://github.com/actions/runner-images/issues/668>
 # apt.llvm.org advertises AAAA records, so force IPv4 for apt (wget below gets -4).
 RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4
 
