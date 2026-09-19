@@ -67,7 +67,7 @@ ENV PATH=${PATH}:/android-ndk-${ANDROID_NDK_VERSION}/toolchains/llvm/prebuilt/${
 
 SHELL ["/bin/bash", "-c"]
 
-ENV EMSCRIPTEN_VER=3.1.59
+ENV EMSCRIPTEN_VER=6.0.9
 
 RUN git clone https://github.com/emscripten-core/emsdk.git \
 	&& (cd emsdk && ./emsdk install ${EMSCRIPTEN_VER}) \
