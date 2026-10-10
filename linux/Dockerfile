@@ -82,7 +82,7 @@ RUN cargo install --locked just
 
 # Install Android NDK
 
-ENV ANDROID_NDK_VERSION=r26d
+ENV ANDROID_NDK_VERSION=r30
 ENV ANDROID_HOST=linux-x86_64
 
 # HTTP/1.1, because of spurious HTTP/2 framing errors in the Azure / GitHub cloud.
