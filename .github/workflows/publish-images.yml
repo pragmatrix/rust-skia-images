@@ -1,10 +1,8 @@
 name: Docker Image CI
 
+# Manual only, because every run publishes the shared :latest image.
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+  workflow_dispatch:
 
 jobs:
   linux:
