@@ -56,6 +56,26 @@ RUN apt-get update && apt-get install -y \
 	ninja-build \
 	libstdc++-10-dev
 
+# Skia picks the COLRv1 struct layout from the FreeType headers at compile time, and FreeType 2.13.0
+# changed that layout without a soname bump. 2.13+ headers enable COLRv1 on current distros, while
+# linking stays against jammy's libfreetype (2.11.1), so Skia calling a function newer than that
+# fails linking the CI test binaries. rust-skia >= m156.2 turns COLRv1 off at runtime on FreeType
+# 2.11/2.12; older rust-skia versions must not be built with this image.
+# <https://github.com/rust-skia/rust-skia/issues/1345>
+# The SHA-256 is that of the release tarball verified against Werner Lemberg's signature. The hold
+# keeps an upgrade of libfreetype-dev from writing its 2.11 headers back over these.
+ARG FREETYPE_HEADERS_VERSION=2.13.3
+ARG FREETYPE_HEADERS_SHA256=0550350666d427c74daeb85d5ac7bb353acba5f76956395995311a9c6f063289
+RUN curl --http1.1 -sSfL -o freetype.tar.xz \
+	https://download.savannah.gnu.org/releases/freetype/freetype-${FREETYPE_HEADERS_VERSION}.tar.xz \
+ && echo "${FREETYPE_HEADERS_SHA256}  freetype.tar.xz" | sha256sum -c - \
+ && apt-mark hold libfreetype-dev libfreetype6 \
+ && rm -rf /usr/include/freetype2 \
+ && mkdir /usr/include/freetype2 \
+ && tar -xJf freetype.tar.xz --strip-components=2 -C /usr/include/freetype2 \
+	freetype-${FREETYPE_HEADERS_VERSION}/include \
+ && rm freetype.tar.xz
+
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 RUN cargo install --locked just
@@ -118,3 +138,7 @@ RUN chmod +x /usr/local/bin/test_includes.sh
 
 # Run the include path tests
 RUN /usr/local/bin/test_includes.sh
+
+# Fails the image build if a later layer replaced the FreeType 2.13+ headers installed above.
+RUN printf '#include <ft2build.h>\n#include FT_FREETYPE_H\n#if FREETYPE_MAJOR == 2 && FREETYPE_MINOR < 13\n#error FreeType headers older than 2.13\n#endif\n' \
+	| clang -fsyntax-only -I/usr/include/freetype2 -x c -
