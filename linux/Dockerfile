@@ -1,9 +1,12 @@
 # This container was based on ubuntu 18 because we need to link with libstdc++ 6.0.25 because of ABI incompatibilities.
 # <https://github.com/rust-skia/rust-skia/issues/393>
 # libstdc++ versions used by this image:
-# - libstdc++-10-dev is pinned to keep the C++ runtime baseline (gcc 10).
-# - clang-20 on jammy works with libstdc++-10-dev.
-# - Keeping gcc-10's libstdc++ preserves binary compatibility for users on older distros.
+# - libstdc++-10-dev is installed for x86_64, but clang-20 picks the newest gcc installation,
+#   so x86_64 builds compile against jammy's libstdc++-11-dev headers.
+# - The aarch64 cross toolchain uses gcc 11 as well. Skia's Graphite backend needs the C++20
+#   std::atomic wait and notify functions, which libstdc++ provides starting with gcc 11.
+# - libstdc++ 11 implements atomic wait in its headers, so it does not raise the runtime
+#   GLIBCXX symbol version that binaries built here require.
 # - The glibc baseline is jammy's 2.35 (moved from focal's 2.31).
 FROM --platform=linux/amd64 ubuntu:22.04
 LABEL org.opencontainers.image.source=https://github.com/pragmatrix/rust-skia-images
@@ -115,10 +118,10 @@ RUN sed -i 's|^deb http://archive.ubuntu.com/ubuntu|deb [arch=amd64] http://arch
 	&& echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-backports main restricted universe multiverse" >> /etc/apt/sources.list \
 	&& echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main restricted universe multiverse" >> /etc/apt/sources.list
 RUN apt-get update && apt-get install -y --no-install-recommends \
-	gcc-10-aarch64-linux-gnu \
-	g++-10-aarch64-linux-gnu \
-	libstdc++-10-dev:arm64 \
-	libgcc-10-dev:arm64
+	gcc-11-aarch64-linux-gnu \
+	g++-11-aarch64-linux-gnu \
+	libstdc++-11-dev:arm64 \
+	libgcc-11-dev:arm64
 
 # Set up alternatives after all packages are installed
 RUN update-alternatives \
@@ -129,8 +132,8 @@ RUN update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-20 100
 
 # Set up alternatives for aarch64 cross-compiler
 RUN update-alternatives \
-	--install /usr/bin/aarch64-linux-gnu-gcc aarch64-linux-gnu-gcc /usr/bin/aarch64-linux-gnu-gcc-10 100 \
-	--slave /usr/bin/aarch64-linux-gnu-g++ aarch64-linux-gnu-g++ /usr/bin/aarch64-linux-gnu-g++-10
+	--install /usr/bin/aarch64-linux-gnu-gcc aarch64-linux-gnu-gcc /usr/bin/aarch64-linux-gnu-gcc-11 100 \
+	--slave /usr/bin/aarch64-linux-gnu-g++ aarch64-linux-gnu-g++ /usr/bin/aarch64-linux-gnu-g++-11
 
 # Add script to test C++ include paths
 COPY test_includes.sh /usr/local/bin/test_includes.sh
