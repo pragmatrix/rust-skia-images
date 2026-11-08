@@ -51,3 +51,24 @@ for target in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu; do
     fi
     echo ""
 done
+
+echo "========================================="
+echo "Testing the libstdc++ version clang selects"
+echo "========================================="
+echo ""
+
+# clang picks the newest gcc installation it finds, which can differ from the one the Dockerfile
+# intends. Binaries built here depend on the selected libstdc++, so a silent switch changes the
+# baseline that rust-skia's prebuilt binaries require.
+EXPECTED_GLIBCXX_RELEASE=11
+for target in x86_64-unknown-linux-gnu aarch64-unknown-linux-gnu; do
+    release=$(echo '#include <cstddef>' \
+        | clang++ -target "$target" -std=c++20 -dM -E -x c++ - \
+        | awk '$2 == "_GLIBCXX_RELEASE" { print $3 }')
+    if [ "$release" = "$EXPECTED_GLIBCXX_RELEASE" ]; then
+        echo "✓ $target uses libstdc++ $release"
+    else
+        echo "✗ $target uses libstdc++ '$release', expected $EXPECTED_GLIBCXX_RELEASE"
+        exit 1
+    fi
+done
