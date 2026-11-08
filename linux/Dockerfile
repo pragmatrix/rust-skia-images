@@ -86,9 +86,10 @@ RUN cargo install --locked just
 # Install Android NDK
 
 # The version matches the NDK that Skia's CI builds with. Skia pins it as `NDK_VER` in
-# `infra/bots/assets/android_ndk_linux/create.py`. The NDK that builds rust-skia's prebuilt
-# Android binaries is the oldest NDK that users can link them with. A newer NDK breaks users
-# on older NDKs (https://github.com/rust-skia/rust-skia/issues/1375).
+# `infra/bots/assets/android_ndk_linux/create.py`. Users need this NDK or a newer one to link
+# rust-skia's prebuilt Android binaries, because the binaries can reference libc++ symbols that
+# older NDKs lack. A newer NDK here breaks users on older NDKs
+# (https://github.com/rust-skia/rust-skia/issues/1375).
 ENV ANDROID_NDK_VERSION=r27d
 ENV ANDROID_HOST=linux-x86_64
 
